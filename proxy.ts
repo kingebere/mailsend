@@ -1,13 +1,19 @@
-// middleware.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyToken } from '@/lib/auth'
+// proxy.ts
+import type { NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import { verifyToken } from '@/lib/auth-token'
 
-const PUBLIC_PATHS = ['/login', '/register', '/unsubscribe', '/api/auth', '/api/ses-webhook']
+const PUBLIC_PATHS = [
+  '/login',
+  '/register',
+  '/unsubscribe',
+  '/api/auth',
+  '/api/ses-webhook',
+]
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
-  // Allow public paths and static assets
   if (
     PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
@@ -17,12 +23,10 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow API routes to handle their own auth (except dashboard pages)
   if (pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
-  // Protect all dashboard pages
   const token = req.cookies.get('auth_token')?.value
   if (!token) {
     return NextResponse.redirect(new URL('/login', req.url))
