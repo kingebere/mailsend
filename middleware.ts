@@ -1,4 +1,4 @@
-// proxy.ts
+// middleware.ts
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth-token'
@@ -11,7 +11,7 @@ const PUBLIC_PATHS = [
   '/api/ses-webhook',
 ]
 
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   if (
