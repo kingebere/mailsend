@@ -55,7 +55,7 @@ export const GET = withAuth(async (req, { userId }) => {
 
   // Build campaign stats
   const campaignStats = await Promise.all(
-    recentCampaigns.map(async (c) => {
+    recentCampaigns.map(async (c: { id: any; name: any; status: any; sentAt: any; createdAt: any }) => {
       const [sent, opens, clicks, bounces] = await Promise.all([
         prisma.campaignRecipient.count({ where: { campaignId: c.id, status: 'sent' } }),
         prisma.emailEvent.count({ where: { campaignId: c.id, type: 'open' } }),
@@ -81,7 +81,7 @@ export const GET = withAuth(async (req, { userId }) => {
   const avgOpenRate =
     campaignStats.length > 0
       ? Math.round(
-          (campaignStats.reduce((a, c) => a + c.openRate, 0) / campaignStats.length) * 10
+          (campaignStats.reduce((a: number, c: { openRate: number }) => a + c.openRate, 0) / campaignStats.length) * 10
         ) / 10
       : 0
 

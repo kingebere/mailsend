@@ -1,5 +1,5 @@
 // lib/auth.ts
-import { SignJWT, jwtVerify } from 'jose'
+import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from 'jose'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
@@ -7,7 +7,7 @@ const secret = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-dev-secret-change-in-production'
 )
 
-export interface JWTPayload {
+export interface JWTPayload extends JoseJWTPayload {
   userId: string
   email: string
 }
@@ -23,7 +23,7 @@ export async function signToken(payload: JWTPayload): Promise<string> {
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secret)
-    return payload as unknown as JWTPayload
+    return payload as JWTPayload
   } catch {
     return null
   }

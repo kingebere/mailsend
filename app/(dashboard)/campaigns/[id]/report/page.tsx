@@ -18,6 +18,11 @@ interface Report {
   opensByHour: { hour:number; opens:number }[]
 }
 
+interface CampaignDetail {
+  topLinks?: { url:string; clicks:number }[]
+  opensByHour?: { hour:number; opens:number }[]
+}
+
 const COLORS = ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6']
 
 function Metric({ label, value, sub, icon:Icon, color, large }:{
@@ -63,7 +68,12 @@ export default function CampaignReportPage(){
     Promise.all([
       fetch(`/api/campaigns/${id}`).then(r=>r.json()),
       fetch(`/api/analytics?days=365`).then(r=>r.json()),
-      fetch(`/api/analytics/campaign/${id}`).then(r=>r.ok?r.json():{}).catch(()=>({})),
+      fetch(`/api/analytics/campaign/${id}`)
+        .then(async (r): Promise<CampaignDetail> => {
+          if (!r.ok) return {}
+          return r.json()
+        })
+        .catch((): CampaignDetail => ({})),
     ]).then(([campaign, analytics, detail])=>{
       if (!campaign?.id){ router.push('/campaigns'); return }
       const found = analytics?.campaigns?.find((c:any)=>c.id===id) || {}
