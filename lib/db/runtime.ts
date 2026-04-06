@@ -1,21 +1,18 @@
-import {
-  createClient,
-  type Client as LibSQLClient,
-  type InValue,
-} from '@libsql/client'
-import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql'
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import * as schema from './schema'
 
-export type AnyDb =
-  | ReturnType<typeof drizzleLibsql<typeof schema>>
-  | ReturnType<typeof drizzleD1<typeof schema>>
+export type AnyDb = ReturnType<typeof drizzleD1<typeof schema>>
 
-type SqlArg = InValue
+export type SqlArg =
+  | string
+  | number
+  | null
+  | ArrayBuffer
+  | Uint8Array
 
 type DbAdapter = {
-  kind: 'local' | 'd1'
+  kind: 'd1'
   db: AnyDb
   all<T = Record<string, unknown>>(sql: string, args?: SqlArg[]): Promise<T[]>
   get<T = Record<string, unknown>>(sql: string, args?: SqlArg[]): Promise<T | null>
@@ -24,46 +21,19 @@ type DbAdapter = {
 
 const globalCache = globalThis as typeof globalThis & {
   __mailerDbAdapter?: Promise<DbAdapter>
-  __mailerLibsqlClient?: LibSQLClient
 }
 
-function getBoundD1(): D1Database | null {
-  try {
-    const { env } = getCloudflareContext()
-    const db = env?.DB
+function getBoundD1(): D1Database {
+  const { env } = getCloudflareContext()
+  const db = env?.DB
 
-    if (db && typeof db === 'object') {
-      return db as D1Database
-    }
-
-    return null
-  } catch {
-    return null
+  if (db && typeof db === 'object') {
+    return db as D1Database
   }
-}
 
-async function createLocalAdapter(): Promise<DbAdapter> {
-  const url = process.env.LOCAL_DB_URL || 'file:./.data/mailer-local.db'
-  const client = globalCache.__mailerLibsqlClient ?? createClient({ url })
-  globalCache.__mailerLibsqlClient = client
-
-  const db = drizzleLibsql(client, { schema })
-
-  return {
-    kind: 'local',
-    db,
-    async all<T>(sql: string, args: SqlArg[] = []) {
-      const result = await client.execute({ sql, args })
-      return (result.rows as T[]) ?? []
-    },
-    async get<T>(sql: string, args: SqlArg[] = []) {
-      const result = await client.execute({ sql, args })
-      return (result.rows?.[0] as T | undefined) ?? null
-    },
-    async run(sql: string, args: SqlArg[] = []) {
-      await client.execute({ sql, args })
-    },
-  }
+  throw new Error(
+    'D1 binding "DB" is not available. Run through Cloudflare preview/deploy so the DB binding exists.'
+  )
 }
 
 async function createD1Adapter(d1: D1Database): Promise<DbAdapter> {
@@ -73,29 +43,23 @@ async function createD1Adapter(d1: D1Database): Promise<DbAdapter> {
     kind: 'd1',
     db,
     async all<T>(sql: string, args: SqlArg[] = []) {
-      const stmt = d1.prepare(sql).bind(...(args as unknown[]))
+      const stmt = d1.prepare(sql).bind(...args)
       const result = await stmt.all<T>()
       return result.results ?? []
     },
     async get<T>(sql: string, args: SqlArg[] = []) {
-      const stmt = d1.prepare(sql).bind(...(args as unknown[]))
+      const stmt = d1.prepare(sql).bind(...args)
       const row = await stmt.first<T>()
       return row ?? null
     },
     async run(sql: string, args: SqlArg[] = []) {
-      await d1.prepare(sql).bind(...(args as unknown[])).run()
+      await d1.prepare(sql).bind(...args).run()
     },
   }
 }
 
 async function createAdapter(): Promise<DbAdapter> {
-  const d1 = getBoundD1()
-
-  if (d1) {
-    return createD1Adapter(d1)
-  }
-
-  return createLocalAdapter()
+  return createD1Adapter(getBoundD1())
 }
 
 export async function getDbAdapter(): Promise<DbAdapter> {

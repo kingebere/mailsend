@@ -1,7 +1,4 @@
-import type { InValue } from '@libsql/client'
-import { getDbAdapter } from './runtime'
-
-type SqlArg = InValue
+import { getDbAdapter, type SqlArg } from './runtime'
 
 function makeId() {
   return `id_${crypto.randomUUID().replace(/-/g, '')}`
@@ -22,17 +19,24 @@ const DATE_KEYS = new Set([
 
 function toSqlArg(value: unknown): SqlArg {
   if (value === undefined || value === null) return null
+
   if (value instanceof Date) return value.toISOString()
+
+  if (typeof value === 'bigint') {
+    return Number(value) // or value.toString() if you want safety
+  }
+
   if (
     typeof value === 'string' ||
     typeof value === 'number' ||
-    typeof value === 'bigint' ||
     value instanceof ArrayBuffer ||
     value instanceof Uint8Array
   ) {
     return value
   }
+
   if (typeof value === 'boolean') return value ? 1 : 0
+
   return JSON.stringify(value)
 }
 

@@ -26,6 +26,7 @@
     "csv-parse": "^5.5.6",
     "date-fns": "^3.6.0",
     "dotenv": "^17.4.1",
+    "drizzle-orm": "^0.44.6",
     "jose": "^5.6.3",
     "lucide-react": "^0.400.0",
     "next": "16.2.2",
@@ -33,9 +34,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^2.12.7",
-    "zod": "^3.23.8",
-    "@libsql/client": "^0.15.15",
-    "drizzle-orm": "^0.44.6"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.18.0",
@@ -44,11 +43,11 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "^10.4.19",
+    "drizzle-kit": "^0.31.4",
     "postcss": "^8.4.39",
     "tailwindcss": "^3.4.6",
     "typescript": "^5",
-    "wrangler": "^4.80.0",
-    "drizzle-kit": "^0.31.4"
+    "wrangler": "^4.80.0"
   },
   "overrides": {
     "@types/react": "19.2.14",
