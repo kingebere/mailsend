@@ -30,19 +30,17 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 }
 
 export async function getSession(): Promise<JWTPayload | null> {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get('auth_token')?.value
   if (!token) return null
   return verifyToken(token)
 }
 
-// For API routes: check both cookie and Authorization header (for API key usage)
+// For API routes: check both cookie and Authorization header
 export async function getSessionFromRequest(req: NextRequest): Promise<JWTPayload | null> {
-  // Check cookie
   const cookieToken = req.cookies.get('auth_token')?.value
   if (cookieToken) return verifyToken(cookieToken)
 
-  // Check Authorization header
   const authHeader = req.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7)
