@@ -1,0 +1,183 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  // SES config stored per user
+  awsAccessKeyId     String?
+  awsSecretAccessKey String?
+  awsRegion          String  @default("us-east-1")
+  fromEmail          String?
+  fromName           String?
+
+  contacts    Contact[]
+  groups      Group[]
+  campaigns   Campaign[]
+  templates   Template[]
+  apiKeys     ApiKey[]
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  email       String
+  firstName   String?
+  lastName    String?
+  status      String   @default("subscribed") // subscribed | unsubscribed | bounced | complained
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tags              ContactTag[]
+  groupMembers      GroupMember[]
+  campaignRecipients CampaignRecipient[]
+  events            EmailEvent[]
+
+  @@unique([email, userId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  name     String
+  userId   String
+  contacts ContactTag[]
+
+  @@unique([name, userId])
+}
+
+model ContactTag {
+  contactId String
+  tagId     String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contactId, tagId])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  members   GroupMember[]
+  campaigns Campaign[]
+
+  @@unique([name, userId])
+}
+
+model GroupMember {
+  groupId   String
+  contactId String
+  group     Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, contactId])
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  htmlBody  String
+  textBody  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  campaigns Campaign[]
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  name        String
+  subject     String
+  fromEmail   String
+  fromName    String
+  replyTo     String?
+  htmlBody    String
+  textBody    String?
+  previewText String?
+  status      String    @default("draft") // draft | scheduled | sending | sent | cancelled
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String?
+  group       Group?    @relation(fields: [groupId], references: [id])
+  templateId  String?
+  template    Template? @relation(fields: [templateId], references: [id])
+
+  recipients CampaignRecipient[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model CampaignRecipient {
+  id         String   @id @default(cuid())
+  campaignId String
+  contactId  String
+  messageId  String?  // SES message ID
+  sentAt     DateTime?
+  status     String   @default("pending") // pending | sent | failed
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId])
+}
+
+model EmailEvent {
+  id         String   @id @default(cuid())
+  type       String   // open | click | bounce | complaint | delivery
+  contactId  String?
+  campaignId String?
+  messageId  String?
+  metadata   String?  // JSON string
+  createdAt  DateTime @default(now())
+  contact    Contact? @relation(fields: [contactId], references: [id])
+
+  @@index([campaignId])
+  @@index([contactId])
+  @@index([type])
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  name      String
+  keyHash   String    @unique
+  keyPrefix String    // first 8 chars for display
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  lastUsed  DateTime?
+  expiresAt DateTime?
+}
+
+model UnsubscribeToken {
+  id        String   @id @default(cuid())
+  token     String   @unique @default(cuid())
+  email     String
+  userId    String
+  createdAt DateTime @default(now())
+}
