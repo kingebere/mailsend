@@ -1,7 +1,7 @@
 // lib/auth.ts
 import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from 'jose'
 import { cookies } from 'next/headers'
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 const secret = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-dev-secret-change-in-production'
@@ -36,10 +36,13 @@ export async function getSession(): Promise<JWTPayload | null> {
   return verifyToken(token)
 }
 
-// For API routes: check both cookie and Authorization header
-export async function getSessionFromRequest(req: NextRequest): Promise<JWTPayload | null> {
+export async function getSessionFromRequest(
+  req: NextRequest
+): Promise<JWTPayload | null> {
   const cookieToken = req.cookies.get('auth_token')?.value
-  if (cookieToken) return verifyToken(cookieToken)
+  if (cookieToken) {
+    return verifyToken(cookieToken)
+  }
 
   const authHeader = req.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {

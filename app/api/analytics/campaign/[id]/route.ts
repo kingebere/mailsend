@@ -1,48 +1,71 @@
 // app/api/analytics/campaign/[id]/route.ts
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, ok, err } from '@/lib/api-helpers'
 
-export const GET = withAuth(async (req, { userId, params }) => {
-  const id = params?.id
-  const campaign = await prisma.campaign.findUnique({ where: { id } })
-  if (!campaign || campaign.userId !== userId) return err('Not found', 404)
+export const GET = withAuth<{ id: string }>(
+  async (_req: NextRequest, { userId, params }) => {
+    const { id } = await params
 
-  // Top clicked links
-  const clickEvents = await prisma.emailEvent.findMany({
-    where: { campaignId: id, type: 'click' },
-    select: { metadata: true },
-  })
+    const campaign = await prisma.campaign.findUnique({
+      where: { id },
+    })
 
-  const linkCounts: Record<string, number> = {}
-  for (const ev of clickEvents) {
-    try {
-      const meta = JSON.parse(ev.metadata || '{}')
-      if (meta.url) linkCounts[meta.url] = (linkCounts[meta.url] || 0) + 1
-    } catch {}
+    if (!campaign || campaign.userId !== userId) {
+      return err('Not found', 404)
+    }
+
+    const clickEvents = await prisma.emailEvent.findMany({
+      where: { campaignId: id, type: 'click' },
+      select: { metadata: true },
+    })
+
+    const linkCounts: Record<string, number> = {}
+
+    for (const ev of clickEvents) {
+      try {
+        const rawMeta = ev.metadata
+        const meta =
+          typeof rawMeta === 'string'
+            ? JSON.parse(rawMeta)
+            : (rawMeta ?? {})
+
+        if (
+          meta &&
+          typeof meta === 'object' &&
+          'url' in meta &&
+          typeof meta.url === 'string' &&
+          meta.url.length > 0
+        ) {
+          linkCounts[meta.url] = (linkCounts[meta.url] || 0) + 1
+        }
+      } catch {
+        // ignore malformed metadata
+      }
+    }
+
+    const topLinks = Object.entries(linkCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([url, clicks]) => ({ url, clicks }))
+
+    const openEvents = await prisma.emailEvent.findMany({
+      where: { campaignId: id, type: 'open' },
+      select: { createdAt: true },
+    })
+
+    const hourCounts: Record<number, number> = {}
+
+    for (const ev of openEvents) {
+      const hour = new Date(ev.createdAt).getHours()
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1
+    }
+
+    const opensByHour = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      opens: hourCounts[hour] || 0,
+    }))
+
+    return ok({ topLinks, opensByHour })
   }
-
-  const topLinks = Object.entries(linkCounts)
-    .sort(([,a],[,b]) => b - a)
-    .slice(0, 10)
-    .map(([url, clicks]) => ({ url, clicks }))
-
-  // Opens by hour
-  const openEvents = await prisma.emailEvent.findMany({
-    where: { campaignId: id, type: 'open' },
-    select: { createdAt: true },
-  })
-
-  const hourCounts: Record<number, number> = {}
-  for (const ev of openEvents) {
-    const hour = new Date(ev.createdAt).getHours()
-    hourCounts[hour] = (hourCounts[hour] || 0) + 1
-  }
-
-  const opensByHour = Array.from({ length: 24 }, (_, h) => ({
-    hour: h,
-    opens: hourCounts[h] || 0,
-  }))
-
-  return ok({ topLinks, opensByHour })
-})
+)

@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/auth'
 
 const PUBLIC_PATHS = ['/login', '/register', '/unsubscribe', '/api/auth', '/api/ses-webhook']
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
 
   // Allow public paths and static assets
