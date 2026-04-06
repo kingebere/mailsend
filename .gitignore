@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+.open-next/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Local databases (VERY IMPORTANT for your setup)
+.data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Prisma (legacy - safe to keep ignored)
+prisma/dev.db
+prisma/dev.db-journal
+prisma/*.db
+prisma/*.db-journal
+
+# Logs
+*.log
+
+# Keys / secrets
+*.pem
+*.key
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Coverage
+coverage/

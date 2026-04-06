@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mailsend2",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-04-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mailer",
+      "database_id": "43926806-7448-42c1-b238-0151b78d1515",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3000"
+  }
+}
+
