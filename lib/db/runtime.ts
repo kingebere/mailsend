@@ -5,6 +5,7 @@ import {
 } from '@libsql/client'
 import { drizzle as drizzleLibsql } from 'drizzle-orm/libsql'
 import { drizzle as drizzleD1 } from 'drizzle-orm/d1'
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import * as schema from './schema'
 
 export type AnyDb =
@@ -26,10 +27,16 @@ const globalCache = globalThis as typeof globalThis & {
   __mailerLibsqlClient?: LibSQLClient
 }
 
-async function getWorkerEnv(): Promise<Record<string, unknown> | null> {
+function getBoundD1(): D1Database | null {
   try {
-    const mod = await import('cloudflare:workers')
-    return (mod as unknown as { env?: Record<string, unknown> }).env ?? null
+    const { env } = getCloudflareContext()
+    const db = env?.DB
+
+    if (db && typeof db === 'object') {
+      return db as D1Database
+    }
+
+    return null
   } catch {
     return null
   }
@@ -46,24 +53,15 @@ async function createLocalAdapter(): Promise<DbAdapter> {
     kind: 'local',
     db,
     async all<T>(sql: string, args: SqlArg[] = []) {
-      const result = await client.execute({
-        sql,
-        args,
-      })
+      const result = await client.execute({ sql, args })
       return (result.rows as T[]) ?? []
     },
     async get<T>(sql: string, args: SqlArg[] = []) {
-      const result = await client.execute({
-        sql,
-        args,
-      })
+      const result = await client.execute({ sql, args })
       return (result.rows?.[0] as T | undefined) ?? null
     },
     async run(sql: string, args: SqlArg[] = []) {
-      await client.execute({
-        sql,
-        args,
-      })
+      await client.execute({ sql, args })
     },
   }
 }
@@ -91,11 +89,10 @@ async function createD1Adapter(d1: D1Database): Promise<DbAdapter> {
 }
 
 async function createAdapter(): Promise<DbAdapter> {
-  const workerEnv = await getWorkerEnv()
-  const maybeD1 = workerEnv?.DB
+  const d1 = getBoundD1()
 
-  if (maybeD1 && typeof maybeD1 === 'object') {
-    return createD1Adapter(maybeD1 as D1Database)
+  if (d1) {
+    return createD1Adapter(d1)
   }
 
   return createLocalAdapter()
