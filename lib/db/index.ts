@@ -1227,6 +1227,45 @@ export const db: any = {
   },
 
   campaignRecipient: {
+    async findMany({
+      where = {},
+      include,
+      orderBy,
+      take,
+    }: {
+      where?: Record<string, unknown>
+      include?: Record<string, unknown>
+      orderBy?: Record<string, 'asc' | 'desc'>
+      take?: number
+    }) {
+      const adapter = await getDbAdapter()
+      const { whereSql, args } = buildCampaignRecipientWhere(where)
+      const order = orderBy ? Object.entries(orderBy)[0] : ['sentAt', 'desc']
+      const limitSql = typeof take === 'number' ? ` LIMIT ${take}` : ''
+
+      const rows = await adapter.all<Record<string, unknown>>(
+        `SELECT * FROM "CampaignRecipient" cr ${whereSql} ORDER BY cr.${order[0]} ${String(order[1]).toUpperCase()}${limitSql}`,
+        args
+      )
+
+      const normalized = rows.map((row) => normalizeRow(row))
+
+      if (include?.contact) {
+        return Promise.all(
+          normalized.map(async (row) => ({
+            ...row,
+            contact: row.contactId
+              ? await db.contact.findUnique({
+                  where: { id: row.contactId as string },
+                })
+              : null,
+          }))
+        )
+      }
+
+      return normalized
+    },
+
     async count({ where = {} }: { where?: Record<string, unknown> }) {
       const { whereSql, args } = buildCampaignRecipientWhere(where)
       return countBySql(
