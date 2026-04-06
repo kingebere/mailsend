@@ -353,7 +353,7 @@ const [loadingRecipients, setLoadingRecipients] = useState(false)
       </div>
     </div>
 
-    <div className="overflow-auto border rounded-xl">
+    <div className="overflow-auto border rounded-xl mb-4">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-gray-500">
           <tr>
