@@ -250,7 +250,7 @@ const [loadingRecipients, setLoadingRecipients] = useState(false)
   const isSendable = campaign.status === 'draft' || campaign.status === 'scheduled'
 
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-8 max-w-7xl">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link href="/campaigns" className="btn btn-ghost p-2">
