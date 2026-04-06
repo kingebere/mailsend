@@ -27,6 +27,17 @@ interface Campaign {
   _count: { recipients: number }
 }
 
+type Recipient = {
+  email: string
+  name: string
+  delivered: boolean
+  opened: boolean
+  clicked: boolean
+  bounced: boolean
+  unsubscribed: boolean
+  complained: boolean
+}
+
 interface Stats {
   sent: number
   opens: number
@@ -79,6 +90,9 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [recipients, setRecipients] = useState<Recipient[]>([])
+const [search, setSearch] = useState('')
+const [loadingRecipients, setLoadingRecipients] = useState(false)
 
   type CampaignData = {
     id: string
@@ -110,6 +124,27 @@ export default function CampaignDetailPage() {
   type AnalyticsResponse = {
     campaigns?: AnalyticsCampaign[]
   }
+
+  async function loadRecipients() {
+    setLoadingRecipients(true)
+    try {
+      const res = await fetch(`/api/campaigns/${id}/recipients?search=${search}`)
+  
+      const data: unknown = await res.json()
+  
+      if (res.ok && Array.isArray(data)) {
+        setRecipients(data as Recipient[])
+      } else {
+        setRecipients([])
+      }
+    } finally {
+      setLoadingRecipients(false)
+    }
+  }
+  
+  useEffect(() => {
+    if (campaign?.status === 'sent') loadRecipients()
+  }, [campaign?.status, search])
   
   async function load() {
     setLoading(true)
@@ -271,6 +306,100 @@ export default function CampaignDetailPage() {
             icon={AlertCircle} color={stats.bounces > 0 ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400'} />
         </div>
       )}
+
+      {/* Recipients table */}
+{campaign.status === 'sent' && (
+  <div className="mt-10">
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-lg font-semibold">Recipients</h2>
+
+      <div className="flex gap-2">
+        <input
+          className="input text-sm"
+          placeholder="Search by email"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <button
+          onClick={() => {
+            const csv = [
+              ['Email','Name','Delivered','Opened','Clicked','Bounced','Unsubscribed','Spam'],
+              ...recipients.map(r => [
+                r.email,
+                r.name,
+                r.delivered,
+                r.opened,
+                r.clicked,
+                r.bounced,
+                r.unsubscribed,
+                r.complained
+              ])
+            ]
+              .map(r => r.join(','))
+              .join('\n')
+
+            const blob = new Blob([csv], { type: 'text/csv' })
+            const url = URL.createObjectURL(blob)
+
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'recipients.csv'
+            a.click()
+          }}
+          className="btn btn-secondary text-xs"
+        >
+          Export
+        </button>
+      </div>
+    </div>
+
+    <div className="overflow-auto border rounded-xl">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-gray-500">
+          <tr>
+            <th className="p-3 text-left">Email</th>
+            <th>Name</th>
+            <th>Delivered</th>
+            <th>Opened</th>
+            <th>Clicked</th>
+            <th>Bounced</th>
+            <th>Unsub</th>
+            <th>Spam</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {loadingRecipients ? (
+            <tr>
+              <td colSpan={8} className="p-6 text-center text-gray-400">
+                Loading...
+              </td>
+            </tr>
+          ) : recipients.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="p-6 text-center text-gray-400">
+                No recipients
+              </td>
+            </tr>
+          ) : (
+            recipients.map((r, i) => (
+              <tr key={i} className="border-t">
+                <td className="p-3">{r.email}</td>
+                <td>{r.name}</td>
+                <td>{r.delivered ? '✓' : ''}</td>
+                <td>{r.opened ? '✓' : ''}</td>
+                <td>{r.clicked ? '✓' : ''}</td>
+                <td>{r.bounced ? '⚠' : ''}</td>
+                <td>{r.unsubscribed ? '✓' : ''}</td>
+                <td>{r.complained ? '⚠' : ''}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
       <div className="grid grid-cols-5 gap-6">
         {/* Details */}
