@@ -1,11 +1,10 @@
-// prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -15,7 +14,6 @@ model User {
   name         String?
   createdAt    DateTime @default(now())
 
-  // SES config stored per user
   awsAccessKeyId     String?
   awsSecretAccessKey String?
   awsRegion          String  @default("us-east-1")
@@ -30,20 +28,20 @@ model User {
 }
 
 model Contact {
-  id          String   @id @default(cuid())
-  email       String
-  firstName   String?
-  lastName    String?
-  status      String   @default("subscribed") // subscribed | unsubscribed | bounced | complained
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  email        String
+  firstName    String?
+  lastName     String?
+  status       String   @default("subscribed")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  tags              ContactTag[]
-  groupMembers      GroupMember[]
+  tags               ContactTag[]
+  groupMembers       GroupMember[]
   campaignRecipients CampaignRecipient[]
-  events            EmailEvent[]
+  events             EmailEvent[]
 
   @@unique([email, userId])
   @@index([userId])
@@ -115,7 +113,7 @@ model Campaign {
   htmlBody    String
   textBody    String?
   previewText String?
-  status      String    @default("draft") // draft | scheduled | sending | sent | cancelled
+  status      String    @default("draft")
   scheduledAt DateTime?
   sentAt      DateTime?
   createdAt   DateTime  @default(now())
@@ -137,9 +135,9 @@ model CampaignRecipient {
   id         String   @id @default(cuid())
   campaignId String
   contactId  String
-  messageId  String?  // SES message ID
+  messageId  String?
   sentAt     DateTime?
-  status     String   @default("pending") // pending | sent | failed
+  status     String   @default("pending")
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
@@ -149,11 +147,11 @@ model CampaignRecipient {
 
 model EmailEvent {
   id         String   @id @default(cuid())
-  type       String   // open | click | bounce | complaint | delivery
+  type       String
   contactId  String?
   campaignId String?
   messageId  String?
-  metadata   String?  // JSON string
+  metadata   String?
   createdAt  DateTime @default(now())
   contact    Contact? @relation(fields: [contactId], references: [id])
 
@@ -166,7 +164,7 @@ model ApiKey {
   id        String    @id @default(cuid())
   name      String
   keyHash   String    @unique
-  keyPrefix String    // first 8 chars for display
+  keyPrefix String
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime  @default(now())

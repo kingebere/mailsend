@@ -1,11 +1,11 @@
 'use client'
-// app/(dashboard)/builder/page.tsx
-import { useState, useRef, useEffect } from 'react'
+
+import { Suspense, useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Monitor, Smartphone, Save, Send, Eye, Plus, Trash2, Copy,
   ChevronUp, ChevronDown, Settings, Type, ImageIcon, AlignLeft,
-  AlignCenter, AlignRight, X, Check, Loader2, AlertCircle,
+  AlignCenter, AlignRight, Check, Loader2, AlertCircle,
   ArrowLeft, Layout, Mail, Minus, Square, Columns, Upload,
   Tablet, RefreshCw, Share2
 } from 'lucide-react'
@@ -46,7 +46,7 @@ function renderBlock(block: Block): string {
     case 'header': return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:${c.align}"><h1 style="margin:0;font-size:${c.fontSize}px;font-weight:${c.fontWeight};color:${c.color};font-family:sans-serif;line-height:1.3">${c.text}</h1></div>`
     case 'text':   return `<div style="background:${c.bgColor};padding:${c.padding}px 32px"><p style="margin:0;font-size:${c.fontSize}px;color:${c.color};text-align:${c.align};font-family:sans-serif;line-height:${c.lineHeight}">${String(c.text).replace(/\n/g,'<br/>')}</p></div>`
     case 'image': {
-      const img=`<img src="${c.src}" alt="${c.alt}" style="width:${c.width};max-width:100%;display:block;${c.align==='center'?'margin:0 auto':''}border-radius:${c.borderRadius}px"/>`
+      const img=`<img src="${c.src}" alt="${c.alt}" style="width:${c.width};max-width:100%;display:block;${c.align==='center'?'margin:0 auto;':''}border-radius:${c.borderRadius}px"/>`
       return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:${c.align}">${c.link?`<a href="${c.link}">${img}</a>`:img}</div>`
     }
     case 'button': return `<div style="background:${c.containerBg};padding:${c.padding}px 32px;text-align:${c.align}"><a href="${c.link}" style="display:inline-block;background:${c.bgColor};color:${c.textColor};padding:14px 32px;border-radius:${c.borderRadius}px;text-decoration:none;font-size:${c.fontSize}px;font-weight:${c.fontWeight};font-family:sans-serif">${c.text}</a></div>`
@@ -55,10 +55,13 @@ function renderBlock(block: Block): string {
     case 'columns': return `<div style="background:${c.bgColor};padding:${c.padding}px 32px"><table style="width:100%;border-collapse:collapse"><tr><td style="width:50%;padding-right:${Number(c.gap)/2}px;vertical-align:top;font-size:${c.fontSize}px;color:${c.color};font-family:sans-serif;line-height:1.6">${c.col1}</td><td style="width:50%;padding-left:${Number(c.gap)/2}px;vertical-align:top;font-size:${c.fontSize}px;color:${c.color};font-family:sans-serif;line-height:1.6">${c.col2}</td></tr></table></div>`
     case 'social': {
       const size=Number(c.iconSize)
-      const icons=Object.entries(SOCIAL_ICONS).filter(([k])=>c[k]).map(([k,ic])=>`<a href="${c[k]}" style="display:inline-block;margin:0 ${Number(c.gap)/2}px;text-decoration:none"><span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:${c.iconStyle==='filled'?ic.color:'transparent'};border:${c.iconStyle==='outline'?`2px solid ${ic.color}`:'none'};border-radius:50%;overflow:hidden">${ic.svg}</span></a>`).join('')
+      const icons=Object.entries(SOCIAL_ICONS)
+        .filter(([k])=>c[k])
+        .map(([k,ic])=>`<a href="${c[k]}" style="display:inline-block;margin:0 ${Number(c.gap)/2}px;text-decoration:none"><span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;background:${c.iconStyle==='filled'?ic.color:'transparent'};border:${c.iconStyle==='outline'?`2px solid ${ic.color}`:'none'};border-radius:50%;overflow:hidden">${ic.svg}</span></a>`)
+        .join('')
       return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:${c.align}">${icons||'<span style="color:#9ca3af;font-size:13px;font-family:sans-serif">Add social links in the editor</span>'}</div>`
     }
-    case 'video':  return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:${c.align}"><a href="${c.link}" style="display:block;text-decoration:none"><img src="${c.thumbnailUrl}" alt="Video" style="width:100%;max-width:100%;display:block;border-radius:8px;${c.align==='center'?'margin:0 auto':''}"/>${c.caption?`<p style="margin:8px 0 0;font-size:14px;color:#6b7280;font-family:sans-serif">${c.caption}</p>`:''}</a></div>`
+    case 'video':  return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:${c.align}"><a href="${c.link}" style="display:block;text-decoration:none"><img src="${c.thumbnailUrl}" alt="Video" style="width:100%;max-width:100%;display:block;border-radius:8px;${c.align==='center'?'margin:0 auto;':''}"/>${c.caption?`<p style="margin:8px 0 0;font-size:14px;color:#6b7280;font-family:sans-serif">${c.caption}</p>`:''}</a></div>`
     case 'footer': return `<div style="background:${c.bgColor};padding:${c.padding}px 32px;text-align:center"><p style="margin:0 0 6px;font-size:${c.fontSize}px;color:${c.color};font-family:sans-serif;font-weight:600">${c.companyName}</p><p style="margin:0 0 6px;font-size:${c.fontSize}px;color:${c.color};font-family:sans-serif">${c.address}</p><p style="margin:0;font-size:${c.fontSize}px;color:${c.color};font-family:sans-serif">${c.text} · <a href="{{unsubscribe_link}}" style="color:${c.color}">${c.unsubscribeText}</a></p></div>`
     default: return ''
   }
@@ -89,19 +92,26 @@ function ImageUpload({value,onChange}:{value:string;onChange:(u:string)=>void}){
   const [uploading,setUploading]=useState(false)
   const [err,setErr]=useState('')
   const ref=useRef<HTMLInputElement>(null)
+
   async function go(e:React.ChangeEvent<HTMLInputElement>){
-    const f=e.target.files?.[0]; if(!f) return
-    setUploading(true); setErr('')
-    const fd=new FormData(); fd.append('file',f)
+    const f=e.target.files?.[0]
+    if(!f) return
+    setUploading(true)
+    setErr('')
+    const fd=new FormData()
+    fd.append('file',f)
     const res=await fetch('/api/upload',{method:'POST',body:fd})
     const d=await res.json()
-    if(res.ok) onChange(d.url); else setErr(d.error||'Upload failed')
-    setUploading(false); e.target.value=''
+    if(res.ok) onChange(d.url)
+    else setErr(d.error || 'Upload failed')
+    setUploading(false)
+    e.target.value=''
   }
+
   return <>
     <input className="input text-xs mb-2" value={value} onChange={e=>onChange(e.target.value)} placeholder="https://... or upload below"/>
     <input ref={ref} type="file" accept="image/*" className="hidden" onChange={go}/>
-    <button onClick={()=>ref.current?.click()} disabled={uploading} className="btn btn-secondary w-full text-xs py-2">
+    <button type="button" onClick={()=>ref.current?.click()} disabled={uploading} className="btn btn-secondary w-full text-xs py-2">
       {uploading?<Loader2 className="w-3.5 h-3.5 animate-spin"/>:<Upload className="w-3.5 h-3.5"/>}
       {uploading?'Uploading to R2...':'Upload image from device'}
     </button>
@@ -115,7 +125,7 @@ function BlockProps({block,onChange}:{block:Block;onChange:(c:Record<string,stri
   const set=(k:string,v:string|number|boolean)=>onChange({...c,[k]:v})
   const inp=(k:string,type='text',ph='')=><input className="input text-sm" type={type} value={String(c[k]??'')} placeholder={ph} onChange={e=>set(k,type==='number'?Number(e.target.value):e.target.value)}/>
   const clr=(k:string)=><div className="flex gap-2"><input type="color" value={String(c[k]||'#ffffff')} onChange={e=>set(k,e.target.value)} className="w-10 h-9 rounded border border-gray-200 p-0.5 cursor-pointer flex-shrink-0"/><input className="input flex-1 font-mono text-xs" value={String(c[k]||'')} onChange={e=>set(k,e.target.value)}/></div>
-  const aln=(k:string)=><div className="flex gap-1">{['left','center','right'].map(a=><button key={a} onClick={()=>set(k,a)} className={`btn flex-1 py-1.5 text-xs ${c[k]===a?'btn-primary':'btn-secondary'}`}>{a==='left'?<AlignLeft className="w-3.5 h-3.5 mx-auto"/>:a==='center'?<AlignCenter className="w-3.5 h-3.5 mx-auto"/>:<AlignRight className="w-3.5 h-3.5 mx-auto"/>}</button>)}</div>
+  const aln=(k:string)=><div className="flex gap-1">{['left','center','right'].map(a=><button key={a} type="button" onClick={()=>set(k,a)} className={`btn flex-1 py-1.5 text-xs ${c[k]===a?'btn-primary':'btn-secondary'}`}>{a==='left'?<AlignLeft className="w-3.5 h-3.5 mx-auto"/>:a==='center'?<AlignCenter className="w-3.5 h-3.5 mx-auto"/>:<AlignRight className="w-3.5 h-3.5 mx-auto"/>}</button>)}</div>
   const ta=(k:string,rows=5)=><textarea className="input text-sm" rows={rows} value={String(c[k]??'')} onChange={e=>set(k,e.target.value)}/>
   switch(block.type){
     case 'header': return <><P label="Headline">{ta('text',3)}</P><P label="Font size">{inp('fontSize','number')}</P><P label="Text color">{clr('color')}</P><P label="Background">{clr('bgColor')}</P><P label="Alignment">{aln('align')}</P><P label="Padding">{inp('padding','number')}</P></>
@@ -140,10 +150,10 @@ function CanvasBlock({block,selected,onSelect,onMove,onDelete,onDuplicate,total,
     <div onClick={onSelect} className={`relative group cursor-pointer ${selected?'ring-2 ring-brand-500 ring-offset-1':'hover:ring-1 hover:ring-gray-300'}`}>
       <div dangerouslySetInnerHTML={{__html:renderBlock(block)}}/>
       <div className={`absolute top-1 right-1 flex gap-1 ${selected?'opacity-100':'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-        <button onClick={e=>{e.stopPropagation();onMove(-1)}} disabled={index===0} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5"/></button>
-        <button onClick={e=>{e.stopPropagation();onMove(1)}} disabled={index===total-1} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5"/></button>
-        <button onClick={e=>{e.stopPropagation();onDuplicate()}} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50"><Copy className="w-3.5 h-3.5"/></button>
-        <button onClick={e=>{e.stopPropagation();onDelete()}} className="w-7 h-7 bg-white border border-red-200 rounded shadow-sm flex items-center justify-center hover:bg-red-50 text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
+        <button type="button" onClick={e=>{e.stopPropagation();onMove(-1)}} disabled={index===0} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50 disabled:opacity-30"><ChevronUp className="w-3.5 h-3.5"/></button>
+        <button type="button" onClick={e=>{e.stopPropagation();onMove(1)}} disabled={index===total-1} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50 disabled:opacity-30"><ChevronDown className="w-3.5 h-3.5"/></button>
+        <button type="button" onClick={e=>{e.stopPropagation();onDuplicate()}} className="w-7 h-7 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center hover:bg-gray-50"><Copy className="w-3.5 h-3.5"/></button>
+        <button type="button" onClick={e=>{e.stopPropagation();onDelete()}} className="w-7 h-7 bg-white border border-red-200 rounded shadow-sm flex items-center justify-center hover:bg-red-50 text-red-500"><Trash2 className="w-3.5 h-3.5"/></button>
       </div>
       {selected&&<div className="absolute top-1 left-1 bg-brand-600 text-white text-xs px-2 py-0.5 rounded capitalize">{block.type}</div>}
     </div>
@@ -159,10 +169,11 @@ const DEFAULT:Block[]=[
   {id:'5',type:'footer', content:{...BLOCK_DEFAULTS.footer}},
 ]
 
-export default function Builder(){
+function BuildersPageContent() {
   const router=useRouter()
   const sp=useSearchParams()
   const tid=sp.get('template')
+
   const [blocks,setBlocks]=useState<Block[]>(DEFAULT)
   const [sel,setSel]=useState<string|null>('1')
   const [view,setView]=useState<ViewMode>('desktop')
@@ -190,43 +201,98 @@ export default function Builder(){
     if(timer.current) clearTimeout(timer.current)
     timer.current=setTimeout(async()=>{
       setAutoSave('saving')
-      await fetch(`/api/templates/${savedId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,subject,htmlBody:html})})
+      await fetch(`/api/templates/${savedId}`,{
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name,subject,htmlBody:html})
+      })
       setAutoSave('saved')
     },5000)
-    return()=>{if(timer.current) clearTimeout(timer.current)}
-  },[blocks,emailBg,name,subject])
+    return()=>{ if(timer.current) clearTimeout(timer.current) }
+  },[blocks,emailBg,name,subject,html,savedId])
 
-  function uid(){return Math.random().toString(36).slice(2,10)}
+  function uid(){ return Math.random().toString(36).slice(2,10) }
+
   function addBlock(type:BlockType,afterId?:string){
     const nb:Block={id:uid(),type,content:{...BLOCK_DEFAULTS[type]}}
     setBlocks(prev=>{
       if(!afterId) return [...prev,nb]
       const idx=prev.findIndex(b=>b.id===afterId)
-      const n=[...prev]; n.splice(idx+1,0,nb); return n
+      const n=[...prev]
+      n.splice(idx+1,0,nb)
+      return n
     })
     setSel(nb.id)
   }
-  function upd(id:string,c:Record<string,string|number|boolean>){setBlocks(p=>p.map(b=>b.id===id?{...b,content:c}:b))}
-  function mov(id:string,d:-1|1){setBlocks(p=>{const i=p.findIndex(b=>b.id===id);const n=[...p];const s=i+d;if(s<0||s>=n.length) return p;[n[i],n[s]]=[n[s],n[i]];return n})}
-  function del(id:string){setBlocks(p=>{const n=p.filter(b=>b.id!==id);if(sel===id) setSel(n[0]?.id||null);return n})}
-  function dup(id:string){const b=blocks.find(b=>b.id===id);if(!b) return;const nb={...b,id:uid(),content:{...b.content}};setBlocks(p=>{const i=p.findIndex(b=>b.id===id);const n=[...p];n.splice(i+1,0,nb);return n});setSel(nb.id)}
+
+  function upd(id:string,c:Record<string,string|number|boolean>){
+    setBlocks(p=>p.map(b=>b.id===id?{...b,content:c}:b))
+  }
+
+  function mov(id:string,d:-1|1){
+    setBlocks(p=>{
+      const i=p.findIndex(b=>b.id===id)
+      const n=[...p]
+      const s=i+d
+      if(s<0||s>=n.length) return p
+      ;[n[i],n[s]]=[n[s],n[i]]
+      return n
+    })
+  }
+
+  function del(id:string){
+    setBlocks(p=>{
+      const n=p.filter(b=>b.id!==id)
+      if(sel===id) setSel(n[0]?.id||null)
+      return n
+    })
+  }
+
+  function dup(id:string){
+    const b=blocks.find(b=>b.id===id)
+    if(!b) return
+    const nb={...b,id:uid(),content:{...b.content}}
+    setBlocks(p=>{
+      const i=p.findIndex(b=>b.id===id)
+      const n=[...p]
+      n.splice(i+1,0,nb)
+      return n
+    })
+    setSel(nb.id)
+  }
 
   async function save(){
     setSaving(true)
     const body={name,subject,htmlBody:html}
-    const res=await fetch(savedId?`/api/templates/${savedId}`:'/api/templates',{method:savedId?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    const res=await fetch(savedId?`/api/templates/${savedId}`:'/api/templates',{
+      method:savedId?'PATCH':'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    })
     const d=await res.json()
-    if(res.ok){setSavedId(d.id||savedId);setAutoSave('saved')}
+    if(res.ok){
+      setSavedId(d.id || savedId)
+      setAutoSave('saved')
+    }
     setSaving(false)
   }
 
   async function sendTest(){
     if(!testEmail) return
     setSendingTest(true)
-    const res=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:testEmail,subject:`[TEST] ${subject}`,html})})
+    const res=await fetch('/api/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:testEmail,subject:`[TEST] ${subject}`,html})
+    })
     setSendingTest(false)
-    if(res.ok){setTestSent(true);setTimeout(()=>setTestSent(false),3000)}
-    else{const d=await res.json();alert(d.error)}
+    if(res.ok){
+      setTestSent(true)
+      setTimeout(()=>setTestSent(false),3000)
+    } else {
+      const d=await res.json()
+      alert(d.error)
+    }
   }
 
   const checklist=[
@@ -239,11 +305,10 @@ export default function Builder(){
 
   return(
     <div className="flex h-screen overflow-hidden bg-gray-100">
-      {/* LEFT */}
       <div className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
         <div className="flex border-b border-gray-200">
-          <button onClick={()=>setPanel('blocks')} className={`flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1 ${panel==='blocks'?'text-brand-600 border-b-2 border-brand-600':'text-gray-500'}`}><Plus className="w-3.5 h-3.5"/>Blocks</button>
-          <button onClick={()=>setPanel('settings')} className={`flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1 ${panel==='settings'?'text-brand-600 border-b-2 border-brand-600':'text-gray-500'}`}><Settings className="w-3.5 h-3.5"/>Settings</button>
+          <button type="button" onClick={()=>setPanel('blocks')} className={`flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1 ${panel==='blocks'?'text-brand-600 border-b-2 border-brand-600':'text-gray-500'}`}><Plus className="w-3.5 h-3.5"/>Blocks</button>
+          <button type="button" onClick={()=>setPanel('settings')} className={`flex-1 py-3 text-xs font-medium flex items-center justify-center gap-1 ${panel==='settings'?'text-brand-600 border-b-2 border-brand-600':'text-gray-500'}`}><Settings className="w-3.5 h-3.5"/>Settings</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {panel==='blocks'?(
@@ -251,26 +316,20 @@ export default function Builder(){
               <p className="text-xs text-gray-400 mb-2">Drag to canvas · click to add below selected</p>
               <div className="grid grid-cols-2 gap-2">
                 {PALETTE.map(it=>(
-                  <button key={it.type} draggable onDragStart={()=>setDragType(it.type)} onDragEnd={()=>setDragType(null)}
+                  <button
+                    key={it.type}
+                    type="button"
+                    draggable
+                    onDragStart={()=>setDragType(it.type)}
+                    onDragEnd={()=>setDragType(null)}
                     onClick={()=>addBlock(it.type,sel||undefined)}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-grab text-center">
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-lg border border-gray-200 hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-grab text-center"
+                  >
                     <div className="text-brand-600">{it.icon}</div>
                     <div className="text-xs font-medium text-gray-700">{it.label}</div>
                     <div className="text-[10px] text-gray-400">{it.desc}</div>
                   </button>
                 ))}
-              </div>
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg">
-                <div className="text-xs font-semibold text-amber-700 mb-2">✅ Best practices</div>
-                <ul className="text-xs text-amber-700 space-y-1">
-                  <li>• Subject under 50 chars</li>
-                  <li>• One clear call-to-action</li>
-                  <li>• Always add a footer block</li>
-                  <li>• Use {`{{first_name}}`} to personalise</li>
-                  <li>• Send a test before the real send</li>
-                  <li>• Alt text on every image</li>
-                  <li>• 600px wide for best email client support</li>
-                </ul>
               </div>
             </div>
           ):(
@@ -285,16 +344,10 @@ export default function Builder(){
                 <label className="label">Email background</label>
                 <div className="flex gap-2"><input type="color" value={emailBg} onChange={e=>setEmailBg(e.target.value)} className="w-10 h-9 rounded border border-gray-200 p-0.5 cursor-pointer"/><input className="input flex-1 font-mono text-xs" value={emailBg} onChange={e=>setEmailBg(e.target.value)}/></div>
               </div>
-              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <div className="text-xs font-semibold text-blue-700 mb-2">📋 Merge tags (click to copy)</div>
-                {['{{first_name}}','{{last_name}}','{{email}}','{{unsubscribe_link}}'].map(tag=>(
-                  <button key={tag} onClick={()=>navigator.clipboard.writeText(tag)} className="block w-full text-left font-mono text-xs bg-white border border-blue-200 px-2 py-1 rounded hover:bg-blue-50 mb-1">{tag}</button>
-                ))}
-              </div>
               <div>
                 <label className="label">Send test email</label>
                 <input className="input mb-2" type="email" value={testEmail} onChange={e=>setTestEmail(e.target.value)} placeholder="you@email.com"/>
-                <button onClick={sendTest} disabled={sendingTest||!testEmail} className="btn btn-secondary w-full text-sm">
+                <button type="button" onClick={sendTest} disabled={sendingTest||!testEmail} className="btn btn-secondary w-full text-sm">
                   {sendingTest?<Loader2 className="w-3.5 h-3.5 animate-spin"/>:testSent?<Check className="w-3.5 h-3.5 text-green-500"/>:<Send className="w-3.5 h-3.5"/>}
                   {testSent?'Sent!':sendingTest?'Sending...':'Send test email'}
                 </button>
@@ -313,10 +366,9 @@ export default function Builder(){
         </div>
       </div>
 
-      {/* CENTER */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3 flex-shrink-0">
-          <button onClick={()=>router.back()} className="btn btn-ghost p-1.5"><ArrowLeft className="w-4 h-4"/></button>
+          <button type="button" onClick={()=>router.back()} className="btn btn-ghost p-1.5"><ArrowLeft className="w-4 h-4"/></button>
           <input className="input text-sm font-medium max-w-[180px]" value={name} onChange={e=>setName(e.target.value)}/>
           <div className={`text-xs flex items-center gap-1 ${autoSave==='saved'?'text-green-600':autoSave==='saving'?'text-gray-400':'text-amber-600'}`}>
             {autoSave==='saving'?<Loader2 className="w-3 h-3 animate-spin"/>:autoSave==='saved'?<Check className="w-3 h-3"/>:<RefreshCw className="w-3 h-3"/>}
@@ -324,14 +376,14 @@ export default function Builder(){
           </div>
           <div className="flex items-center gap-1 ml-2 bg-gray-100 rounded-lg p-1">
             {([['desktop','Desktop',Monitor],['tablet','Tablet',Tablet],['mobile','Mobile',Smartphone]] as const).map(([v,lbl,Icon])=>(
-              <button key={v} onClick={()=>setView(v)} className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${view===v?'bg-white shadow-sm text-gray-900':'text-gray-500 hover:text-gray-700'}`}>
+              <button key={v} type="button" onClick={()=>setView(v)} className={`px-2.5 py-1.5 rounded-md text-xs font-medium flex items-center gap-1 transition-colors ${view===v?'bg-white shadow-sm text-gray-900':'text-gray-500 hover:text-gray-700'}`}>
                 <Icon className="w-3.5 h-3.5"/><span className="hidden lg:inline">{lbl}</span>
               </button>
             ))}
           </div>
           <div className="ml-auto flex gap-2">
-            <button onClick={()=>setPreview(!preview)} className={`btn text-xs py-1.5 px-3 ${preview?'btn-primary':'btn-secondary'}`}><Eye className="w-3.5 h-3.5"/>{preview?'Edit':'Preview'}</button>
-            <button onClick={save} disabled={saving} className="btn btn-primary text-xs py-1.5 px-4">
+            <button type="button" onClick={()=>setPreview(!preview)} className={`btn text-xs py-1.5 px-3 ${preview?'btn-primary':'btn-secondary'}`}><Eye className="w-3.5 h-3.5"/>{preview?'Edit':'Preview'}</button>
+            <button type="button" onClick={save} disabled={saving} className="btn btn-primary text-xs py-1.5 px-4">
               {saving?<Loader2 className="w-3.5 h-3.5 animate-spin"/>:autoSave==='saved'&&savedId?<Check className="w-3.5 h-3.5"/>:<Save className="w-3.5 h-3.5"/>}
               {saving?'Saving...':autoSave==='saved'&&savedId?'Saved':'Save template'}
             </button>
@@ -339,40 +391,74 @@ export default function Builder(){
         </div>
 
         <div className="flex-1 overflow-y-auto bg-gray-100 py-8 flex justify-center px-4"
-          onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragType){addBlock(dragType);setDragType(null)};setDragOver(null)}}>
+          onDragOver={e=>e.preventDefault()}
+          onDrop={e=>{e.preventDefault();if(dragType){addBlock(dragType);setDragType(null)};setDragOver(null)}}
+        >
           <div style={{width:VIEW_W[view],maxWidth:'100%',transition:'width .3s'}}>
             <div style={{background:emailBg}}>
-              {preview?<div dangerouslySetInnerHTML={{__html:html}}/>:<>
-                {blocks.map((b,i)=>(
-                  <div key={b.id}
-                    onDragOver={e=>{e.preventDefault();e.stopPropagation();setDragOver(b.id)}}
-                    onDrop={e=>{e.stopPropagation();e.preventDefault();if(dragType){addBlock(dragType,b.id);setDragType(null)};setDragOver(null)}}>
-                    {dragOver===b.id&&dragType&&<div className="h-1.5 bg-brand-400 rounded mx-2 my-0.5"/>}
-                    <CanvasBlock block={b} index={i} total={blocks.length} selected={sel===b.id}
-                      onSelect={()=>setSel(b.id)} onMove={d=>mov(b.id,d)} onDelete={()=>del(b.id)} onDuplicate={()=>dup(b.id)}/>
+              {preview ? (
+                <div dangerouslySetInnerHTML={{__html:html}}/>
+              ) : (
+                <>
+                  {blocks.map((b,i)=>(
+                    <div
+                      key={b.id}
+                      onDragOver={e=>{e.preventDefault();e.stopPropagation();setDragOver(b.id)}}
+                      onDrop={e=>{e.stopPropagation();e.preventDefault();if(dragType){addBlock(dragType,b.id);setDragType(null)};setDragOver(null)}}
+                    >
+                      {dragOver===b.id&&dragType&&<div className="h-1.5 bg-brand-400 rounded mx-2 my-0.5"/>}
+                      <CanvasBlock
+                        block={b}
+                        index={i}
+                        total={blocks.length}
+                        selected={sel===b.id}
+                        onSelect={()=>setSel(b.id)}
+                        onMove={d=>mov(b.id,d)}
+                        onDelete={()=>del(b.id)}
+                        onDuplicate={()=>dup(b.id)}
+                      />
+                    </div>
+                  ))}
+                  <div
+                    onDragOver={e=>{e.preventDefault();setDragOver('end')}}
+                    onDrop={e=>{e.preventDefault();if(dragType){addBlock(dragType);setDragType(null)};setDragOver(null)}}
+                    className={`mx-4 my-3 border-2 border-dashed rounded-lg py-5 text-center text-xs transition-colors ${dragOver==='end'&&dragType?'border-brand-400 bg-brand-50 text-brand-600':'border-gray-300 text-gray-400'}`}
+                  >
+                    {dragType?'Drop block here':'Drag a block here · click a palette item to add below selection'}
                   </div>
-                ))}
-                <div onDragOver={e=>{e.preventDefault();setDragOver('end')}} onDrop={e=>{e.preventDefault();if(dragType){addBlock(dragType);setDragType(null)};setDragOver(null)}}
-                  className={`mx-4 my-3 border-2 border-dashed rounded-lg py-5 text-center text-xs transition-colors ${dragOver==='end'&&dragType?'border-brand-400 bg-brand-50 text-brand-600':'border-gray-300 text-gray-400'}`}>
-                  {dragType?'Drop block here':'Drag a block here · click a palette item to add below selection'}
-                </div>
-              </>}
+                </>
+              )}
             </div>
             <div className="text-center mt-2 text-xs text-gray-400">{view==='desktop'?'Desktop · 600px':view==='tablet'?'Tablet · 480px':'Mobile · 375px'}</div>
           </div>
         </div>
       </div>
 
-      {/* RIGHT */}
       <div className="w-64 bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
         <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{selBlock?`✏️ ${selBlock.type}`:'Properties'}</div>
-          {selBlock&&<button onClick={()=>del(selBlock.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5"/></button>}
+          {selBlock&&<button type="button" onClick={()=>del(selBlock.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5"/></button>}
         </div>
         <div className="flex-1 overflow-y-auto p-3">
           {selBlock?<BlockProps block={selBlock} onChange={c=>upd(selBlock.id,c)}/>:<div className="text-center py-10 text-sm text-gray-400">Click any block to edit it</div>}
         </div>
       </div>
     </div>
+  )
+}
+
+function BuilderFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-100">
+      <div className="text-sm text-gray-500">Loading builder...</div>
+    </div>
+  )
+}
+
+export default function Builders() {
+  return (
+    <Suspense fallback={<BuilderFallback />}>
+      <BuildersPageContent />
+    </Suspense>
   )
 }

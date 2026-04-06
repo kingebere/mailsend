@@ -33,7 +33,7 @@ export const GET = withAuth(async (req, { userId }) => {
 
   // Get stats for each campaign
   const withStats = await Promise.all(
-    campaigns.map(async (c) => {
+    campaigns.map(async (c: { id: any }) => {
       const [sent, opens, clicks] = await Promise.all([
         prisma.campaignRecipient.count({ where: { campaignId: c.id, status: 'sent' } }),
         prisma.emailEvent.count({ where: { campaignId: c.id, type: 'open' } }),
