@@ -1,64 +1,59 @@
 'use client'
-
+// app/(dashboard)/campaigns/page.tsx
 import { useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Send, Trash2, Eye, RefreshCw, PlayCircle } from 'lucide-react'
+import { formatNumber, formatDateTime } from '@/lib/utils'
 
-interface Contact {
+interface Campaign {
   id: string
-  email: string
-  firstName?: string | null
-  lastName?: string | null
-  subscribed?: boolean
-  createdAt?: string
+  name: string
+  subject: string
+  status: string
+  sentAt: string | null
+  createdAt: string
+  scheduledAt: string | null
+  group: { id: string; name: string } | null
+  stats: { sent: number; openRate: number; clickRate: number }
+  _count: { recipients: number }
 }
 
-interface ContactsResponse {
-  contacts?: Contact[]
-  total?: number
-  pages?: number
+interface SendCampaignResponse {
+  message?: string
   error?: string
 }
 
-export default function ContactsPage() {
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [total, setTotal] = useState(0)
-  const [pages, setPages] = useState(1)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
+interface DeleteCampaignResponse {
+  error?: string
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    sent: 'badge-green',
+    scheduled: 'badge-yellow',
+    sending: 'badge-purple',
+    draft: 'badge-gray',
+    cancelled: 'badge-red',
+  }
+
+  return <span className={`badge ${map[status] || 'badge-gray'}`}>{status}</span>
+}
+
+export default function CampaignsPage() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sending, setSending] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
 
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        q: search,
-      })
-
-      const res = await fetch(`/api/contacts?${params}`)
-      const data: ContactsResponse = await res.json()
-
-      if (!res.ok) {
-        alert(data.error || 'Failed to load contacts')
-        setContacts([])
-        setTotal(0)
-        setPages(1)
-        setSelected(new Set())
-        return
-      }
-
-      setContacts(data.contacts || [])
-      setTotal(data.total || 0)
-      setPages(data.pages || 1)
-      setSelected(new Set())
+      const res = await fetch('/api/campaigns')
+      const data: Campaign[] = res.ok ? await res.json() : []
+      setCampaigns(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error('Failed to load contacts:', error)
-      setContacts([])
-      setTotal(0)
-      setPages(1)
-      setSelected(new Set())
+      console.error('Failed to load campaigns:', error)
+      setCampaigns([])
     } finally {
       setLoading(false)
     }
@@ -66,109 +61,159 @@ export default function ContactsPage() {
 
   useEffect(() => {
     load()
-  }, [page, search])
+  }, [])
 
-  function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  async function handleSend(id: string) {
+    if (!confirm('Send this campaign now to all recipients?')) return
+
+    setSending(id)
+
+    try {
+      const res = await fetch(`/api/campaigns/${id}/send`, { method: 'POST' })
+      const data: SendCampaignResponse = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || 'Failed to send campaign')
+        return
+      }
+
+      alert(`✅ ${data.message || 'Campaign sent successfully'}`)
+      load()
+    } catch (error) {
+      console.error('Failed to send campaign:', error)
+      alert('Something went wrong')
+    } finally {
+      setSending(null)
+    }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
-      </div>
-    )
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this campaign? This cannot be undone.')) return
+
+    try {
+      const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' })
+
+      if (!res.ok) {
+        const data: DeleteCampaignResponse = await res.json()
+        alert(data.error || 'Failed to delete campaign')
+        return
+      }
+
+      load()
+    } catch (error) {
+      console.error('Failed to delete campaign:', error)
+      alert('Something went wrong')
+    }
   }
 
   return (
-    <div className="p-8 max-w-6xl">
-      <h1 className="text-2xl font-bold mb-6">Contacts</h1>
-
-      <div className="mb-4 flex items-center gap-2">
-        <input
-          value={search}
-          onChange={(e) => {
-            setPage(1)
-            setSearch(e.target.value)
-          }}
-          placeholder="Search contacts..."
-          className="input"
-        />
+    <div className="p-8 max-w-7xl">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{campaigns.length} total campaigns</p>
+        </div>
+        <Link href="/campaigns/new" className="btn btn-primary">
+          <Plus className="w-4 h-4" /> New Campaign
+        </Link>
       </div>
 
-      {contacts.length === 0 ? (
-        <div className="text-sm text-gray-500">No contacts found.</div>
-      ) : (
-        <table className="w-full">
-          <thead>
-            <tr>
-              <th className="th"></th>
-              <th className="th">Email</th>
-              <th className="th">Name</th>
-              <th className="th">Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {contacts.map((c) => (
-              <tr key={c.id} className="table-row">
-                <td className="td">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(c.id)}
-                    onChange={() => toggleSelect(c.id)}
-                  />
-                </td>
-
-                <td className="td">{c.email}</td>
-
-                <td className="td">
-                  {(c.firstName || '') + ' ' + (c.lastName || '')}
-                </td>
-
-                <td className="td">
-                  {c.subscribed ? (
-                    <span className="text-green-600">Subscribed</span>
-                  ) : (
-                    <span className="text-gray-400">Unsubscribed</span>
-                  )}
-                </td>
+      <div className="card">
+        {loading ? (
+          <div className="flex items-center justify-center h-48">
+            <RefreshCw className="w-5 h-5 text-gray-400 animate-spin" />
+          </div>
+        ) : campaigns.length === 0 ? (
+          <div className="py-16 text-center">
+            <Send className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-600">No campaigns yet</p>
+            <p className="text-xs text-gray-400 mt-1 mb-4">
+              Create your first email campaign to get started
+            </p>
+            <Link href="/campaigns/new" className="btn btn-primary">
+              <Plus className="w-4 h-4" /> Create campaign
+            </Link>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50/60">
+              <tr>
+                <th className="th">Campaign</th>
+                <th className="th">Audience</th>
+                <th className="th">Status</th>
+                <th className="th">Sent</th>
+                <th className="th">Opens</th>
+                <th className="th">Clicks</th>
+                <th className="th">Date</th>
+                <th className="th"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {campaigns.map((c) => (
+                <tr key={c.id} className="table-row">
+                  <td className="td">
+                    <div className="font-medium text-gray-900">{c.name}</div>
+                    <div className="text-xs text-gray-400 truncate max-w-[220px]">
+                      {c.subject}
+                    </div>
+                  </td>
+                  <td className="td text-gray-500">{c.group?.name || 'All contacts'}</td>
+                  <td className="td">
+                    <StatusBadge status={c.status} />
+                  </td>
+                  <td className="td">{c.stats.sent ? formatNumber(c.stats.sent) : '—'}</td>
+                  <td className="td">
+                    {c.stats.sent ? (
+                      <span className={c.stats.openRate >= 20 ? 'text-green-600 font-medium' : ''}>
+                        {c.stats.openRate}%
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td className="td">{c.stats.sent ? `${c.stats.clickRate}%` : '—'}</td>
+                  <td className="td text-xs text-gray-400">
+                    {c.sentAt
+                      ? formatDateTime(c.sentAt)
+                      : c.scheduledAt
+                        ? `Scheduled: ${formatDateTime(c.scheduledAt)}`
+                        : formatDateTime(c.createdAt)}
+                  </td>
+                  <td className="td">
+                    <div className="flex items-center gap-1">
+                      <Link href={`/campaigns/${c.id}`} className="btn btn-ghost py-1 px-2 text-xs">
+                        <Eye className="w-3.5 h-3.5" />
+                      </Link>
 
-      {/* Pagination */}
-      <div className="mt-6 flex items-center gap-2">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="btn btn-secondary"
-        >
-          Prev
-        </button>
+                      {(c.status === 'draft' || c.status === 'scheduled') && (
+                        <button
+                          onClick={() => handleSend(c.id)}
+                          disabled={sending === c.id}
+                          className="btn btn-ghost py-1 px-2 text-xs text-green-600 hover:bg-green-50"
+                        >
+                          {sending === c.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <PlayCircle className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
 
-        <span className="text-sm text-gray-500">
-          Page {page} of {pages}
-        </span>
-
-        <button
-          disabled={page >= pages}
-          onClick={() => setPage((p) => p + 1)}
-          className="btn btn-secondary"
-        >
-          Next
-        </button>
-      </div>
-
-      <div className="mt-4 text-xs text-gray-400">
-        {total} total contacts
+                      {c.status !== 'sending' && (
+                        <button
+                          onClick={() => handleDelete(c.id)}
+                          className="btn btn-ghost py-1 px-2 text-xs text-red-500 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
