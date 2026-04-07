@@ -1211,34 +1211,49 @@ function BuildersPageContent() {
         setLoadingTemplate(false)
         return
       }
-
+  
       setLoadingTemplate(true)
-
+  
       try {
         const res = await fetch(`/api/templates/${tid}`)
-        if (!res.ok) return
-
+        if (!res.ok) {
+          return
+        }
+  
         const data: TemplateResponse = await res.json()
-        setSavedId(data.id)
+  
+        const meta = extractBuilderMeta(data.htmlBody)
+  
         setName(data.name || 'New Email Template')
         setSubject(data.subject || 'Your subject line')
-
-        const meta = extractBuilderMeta(data.htmlBody)
-        if (meta) {
-          setBlocks(meta.blocks.length ? meta.blocks : DEFAULT)
+  
+        if (meta && Array.isArray(meta.blocks) && meta.blocks.length > 0) {
+          const normalizedBlocks = meta.blocks.map((block, index) => ({
+            ...block,
+            id: block.id || `loaded-${index}-${Math.random().toString(36).slice(2, 8)}`,
+            content: { ...block.content },
+          }))
+  
+          setBlocks(normalizedBlocks)
           setEmailBg(meta.emailBg || '#f3f4f6')
-          setSel(meta.blocks[0]?.id || null)
+          setSel(normalizedBlocks[0]?.id || null)
         } else {
           const cleanedHtml = stripBuilderMeta(data.htmlBody)
+  
           const importedBlock: Block = {
-            id: 'imported-html',
+            id: `imported-html-${Math.random().toString(36).slice(2, 8)}`,
             type: 'html',
-            content: { html: cleanedHtml || '<div></div>' },
+            content: {
+              html: cleanedHtml || '<div></div>',
+            },
           }
+  
           setBlocks([importedBlock])
+          setEmailBg('#f3f4f6')
           setSel(importedBlock.id)
         }
-
+  
+        setSavedId(data.id)
         setAutoSave('saved')
       } catch (error) {
         console.error('Failed to load template into builder:', error)
@@ -1246,7 +1261,7 @@ function BuildersPageContent() {
         setLoadingTemplate(false)
       }
     }
-
+  
     loadTemplateFromBuilder()
   }, [tid])
 

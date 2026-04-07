@@ -2,7 +2,7 @@
 // app/(dashboard)/templates/page.tsx
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, FileText, Trash2, X, Loader2 } from 'lucide-react'
+import { Plus, FileText, Trash2, Loader2, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 interface Template {
@@ -44,9 +44,6 @@ const DEFAULTS = [
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', subject: '', htmlBody: '' })
-  const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState<Template | null>(null)
 
   async function load() {
@@ -65,32 +62,6 @@ export default function TemplatesPage() {
     load()
   }, [])
 
-  function openCreate(preset?: typeof DEFAULTS[0]) {
-    setForm(
-      preset
-        ? { name: preset.name, subject: preset.subject, htmlBody: preset.htmlBody }
-        : { name: '', subject: '', htmlBody: '' }
-    )
-    setShowModal(true)
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-
-    try {
-      await fetch('/api/templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      setShowModal(false)
-      load()
-    } finally {
-      setSaving(false)
-    }
-  }
-
   async function handleDelete(id: string) {
     if (!confirm('Delete this template?')) return
     await fetch(`/api/templates/${id}`, { method: 'DELETE' })
@@ -105,12 +76,9 @@ export default function TemplatesPage() {
           <p className="text-sm text-gray-500 mt-0.5">Reusable email templates for your campaigns</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/builder" className="btn btn-secondary">
-            Open builder
+          <Link href="/builder" className="btn btn-primary">
+            <Plus className="w-4 h-4" /> New template in builder
           </Link>
-          <button onClick={() => openCreate()} className="btn btn-primary">
-            <Plus className="w-4 h-4" /> New template
-          </button>
         </div>
       </div>
 
@@ -118,16 +86,16 @@ export default function TemplatesPage() {
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-gray-600 mb-3">Start with a template</h2>
           <div className="grid grid-cols-2 gap-4">
-            {DEFAULTS.map((d) => (
-              <button
+            {DEFAULTS.map((d, index) => (
+              <Link
                 key={d.name}
-                onClick={() => openCreate(d)}
-                className="card p-5 text-left hover:border-brand-300 hover:shadow-sm transition-all"
+                href={`/builder?preset=${index}`}
+                className="card p-5 text-left hover:border-brand-300 hover:shadow-sm transition-all block"
               >
                 <FileText className="w-6 h-6 text-brand-500 mb-3" />
                 <div className="font-semibold text-gray-900 mb-1">{d.name}</div>
                 <div className="text-xs text-gray-400">{d.subject}</div>
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -139,7 +107,9 @@ export default function TemplatesPage() {
             <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
           </div>
         ) : templates.length === 0 ? (
-          <div className="py-12 text-center text-sm text-gray-400">No templates yet — create one above</div>
+          <div className="py-12 text-center text-sm text-gray-400">
+            No templates yet — create one in builder
+          </div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50/60">
@@ -178,59 +148,6 @@ export default function TemplatesPage() {
           </table>
         )}
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold">New template</h2>
-              <button onClick={() => setShowModal(false)} className="btn btn-ghost p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div>
-                <label className="label">Template name</label>
-                <input
-                  className="input"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Newsletter"
-                />
-              </div>
-              <div>
-                <label className="label">Default subject</label>
-                <input
-                  className="input"
-                  value={form.subject}
-                  onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
-                  placeholder="Subject line (can include merge tags)"
-                />
-              </div>
-              <div>
-                <label className="label">HTML body</label>
-                <textarea
-                  className="input font-mono text-xs resize-none"
-                  rows={14}
-                  value={form.htmlBody}
-                  onChange={(e) => setForm((f) => ({ ...f, htmlBody: e.target.value }))}
-                  placeholder="<p>Hi {{first_name}},</p>..."
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="btn btn-primary flex-1">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Create template
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {preview && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
