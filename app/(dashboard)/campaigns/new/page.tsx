@@ -138,64 +138,70 @@ export default function NewCampaignPage() {
     ? groups.find((g) => g.id === form.groupId)?._count.members || 0
     : totalContacts
 
-  async function handleSave(send = false) {
-    if (!form.name || !form.subject || !form.fromEmail || !form.htmlBody) {
-      alert('Please fill in: campaign name, subject, from email, and email body.')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const res = await fetch('/api/campaigns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          subject: form.subject,
-          previewText: form.previewText,
-          fromEmail: form.fromEmail,
-          fromName: form.fromName,
-          replyTo: form.replyTo,
-          groupId: form.groupId || null,
-          htmlBody: form.htmlBody,
-          scheduledAt: !form.sendNow && form.scheduledAt ? form.scheduledAt : null,
-        }),
-      })
-
-      const data: CreateCampaignResponse = await res.json()
-
-      if (!res.ok || !data.id) {
-        alert(data.error || 'Failed to save campaign')
+    async function handleSave(send = false) {
+      if (!form.name || !form.subject || !form.fromEmail || !form.htmlBody) {
+        alert('Please fill in: campaign name, subject, from email, and email body.')
         return
       }
-
-      if (send || form.sendNow) {
-        const sendRes = await fetch(`/api/campaigns/${data.id}/send`, {
+    
+      if (!form.sendNow && !form.scheduledAt) {
+        alert('Please choose a date and time for the scheduled send.')
+        return
+      }
+    
+      setLoading(true)
+    
+      try {
+        const res = await fetch('/api/campaigns', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            subject: form.subject,
+            previewText: form.previewText,
+            fromEmail: form.fromEmail,
+            fromName: form.fromName,
+            replyTo: form.replyTo,
+            groupId: form.groupId || null,
+            htmlBody: form.htmlBody,
+            scheduledAt: !form.sendNow && form.scheduledAt ? form.scheduledAt : null,
+          }),
         })
-
-        const sendData: SendCampaignResponse = await sendRes.json()
-
-        if (!sendRes.ok) {
-          alert(sendData.error || 'Failed to send campaign')
+    
+        const data: CreateCampaignResponse = await res.json()
+    
+        if (!res.ok || !data.id) {
+          alert(data.error || 'Failed to save campaign')
           return
         }
-
-        alert(`✅ ${sendData.message || 'Campaign sent successfully'}`)
-        router.push('/campaigns')
-      } else {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
-        router.push('/campaigns')
+    
+        if (send) {
+          const sendRes = await fetch(`/api/campaigns/${data.id}/send`, {
+            method: 'POST',
+          })
+    
+          const sendData: SendCampaignResponse = await sendRes.json()
+    
+          if (!sendRes.ok) {
+            alert(sendData.error || 'Failed to send campaign')
+            return
+          }
+    
+          alert(`✅ ${sendData.message || 'Campaign sent successfully'}`)
+          router.push('/campaigns')
+        } else {
+          setSaved(true)
+          setTimeout(() => setSaved(false), 2000)
+          alert(form.sendNow ? 'Draft saved.' : 'Campaign scheduled successfully.')
+          router.push('/campaigns')
+        }
+      } catch (error) {
+        console.error('Failed to save campaign:', error)
+        alert('Something went wrong')
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to save campaign:', error)
-      alert('Something went wrong')
-    } finally {
-      setLoading(false)
     }
-  }
 
   return (
     <div className="p-8 max-w-7xl">
@@ -206,7 +212,7 @@ export default function NewCampaignPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleSave(false)}
+         onClick={() => handleSave(form.sendNow)}
             disabled={loading}
             className="btn btn-secondary"
           >
