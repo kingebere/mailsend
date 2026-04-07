@@ -1,10 +1,19 @@
 'use client'
 // app/(dashboard)/templates/page.tsx
 import { useEffect, useState } from 'react'
-import { Plus, FileText, Trash2, Edit2, X, Loader2 } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, FileText, Trash2, X, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
-interface Template { id: string; name: string; subject: string; htmlBody: string; updatedAt: string }
+interface Template {
+  id: string
+  name: string
+  subject: string
+  htmlBody: string
+  updatedAt: string
+}
+
+type TemplatesResponse = Template[]
 
 const DEFAULTS = [
   {
@@ -36,41 +45,50 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [editing, setEditing] = useState<Template | null>(null)
   const [form, setForm] = useState({ name: '', subject: '', htmlBody: '' })
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState<Template | null>(null)
 
   async function load() {
     setLoading(true)
-    const res = await fetch('/api/templates')
-    setTemplates(await res.json())
-    setLoading(false)
+
+    try {
+      const res = await fetch('/api/templates')
+      const data: TemplatesResponse = res.ok ? await res.json() : []
+      setTemplates(Array.isArray(data) ? data : [])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   function openCreate(preset?: typeof DEFAULTS[0]) {
-    setEditing(null)
-    setForm(preset ? { name: preset.name, subject: preset.subject, htmlBody: preset.htmlBody } : { name: '', subject: '', htmlBody: '' })
-    setShowModal(true)
-  }
-
-  function openEdit(t: Template) {
-    setEditing(t)
-    setForm({ name: t.name, subject: t.subject, htmlBody: t.htmlBody })
+    setForm(
+      preset
+        ? { name: preset.name, subject: preset.subject, htmlBody: preset.htmlBody }
+        : { name: '', subject: '', htmlBody: '' }
+    )
     setShowModal(true)
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    const url = editing ? `/api/templates/${editing.id}` : '/api/templates'
-    const method = editing ? 'PATCH' : 'POST'
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-    setSaving(false)
-    setShowModal(false)
-    load()
+
+    try {
+      await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      setShowModal(false)
+      load()
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleDelete(id: string) {
@@ -86,19 +104,26 @@ export default function TemplatesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Templates</h1>
           <p className="text-sm text-gray-500 mt-0.5">Reusable email templates for your campaigns</p>
         </div>
-        <button onClick={() => openCreate()} className="btn btn-primary">
-          <Plus className="w-4 h-4" /> New template
-        </button>
+        <div className="flex gap-2">
+          <Link href="/builder" className="btn btn-secondary">
+            Open builder
+          </Link>
+          <button onClick={() => openCreate()} className="btn btn-primary">
+            <Plus className="w-4 h-4" /> New template
+          </button>
+        </div>
       </div>
 
-      {/* Starter templates */}
       {templates.length === 0 && !loading && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-gray-600 mb-3">Start with a template</h2>
           <div className="grid grid-cols-2 gap-4">
-            {DEFAULTS.map(d => (
-              <button key={d.name} onClick={() => openCreate(d)}
-                className="card p-5 text-left hover:border-brand-300 hover:shadow-sm transition-all">
+            {DEFAULTS.map((d) => (
+              <button
+                key={d.name}
+                onClick={() => openCreate(d)}
+                className="card p-5 text-left hover:border-brand-300 hover:shadow-sm transition-all"
+              >
                 <FileText className="w-6 h-6 text-brand-500 mb-3" />
                 <div className="font-semibold text-gray-900 mb-1">{d.name}</div>
                 <div className="text-xs text-gray-400">{d.subject}</div>
@@ -118,19 +143,33 @@ export default function TemplatesPage() {
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50/60">
-              <tr><th className="th">Name</th><th className="th">Subject</th><th className="th">Updated</th><th className="th"></th></tr>
+              <tr>
+                <th className="th">Name</th>
+                <th className="th">Subject</th>
+                <th className="th">Updated</th>
+                <th className="th"></th>
+              </tr>
             </thead>
             <tbody>
-              {templates.map(t => (
+              {templates.map((t) => (
                 <tr key={t.id} className="table-row">
                   <td className="td font-medium">{t.name}</td>
                   <td className="td text-gray-500 max-w-xs truncate">{t.subject}</td>
                   <td className="td text-xs text-gray-400">{formatDate(t.updatedAt)}</td>
                   <td className="td">
                     <div className="flex gap-1">
-                      <button onClick={() => setPreview(t)} className="btn btn-ghost py-1 px-2 text-xs">Preview</button>
-                      <button onClick={() => openEdit(t)} className="btn btn-ghost py-1 px-2 text-xs"><Edit2 className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => handleDelete(t.id)} className="btn btn-ghost py-1 px-2 text-xs text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => setPreview(t)} className="btn btn-ghost py-1 px-2 text-xs">
+                        Preview
+                      </button>
+                      <Link href={`/builder?template=${t.id}`} className="btn btn-ghost py-1 px-2 text-xs">
+                        Edit in builder
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="btn btn-ghost py-1 px-2 text-xs text-red-500 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -140,33 +179,52 @@ export default function TemplatesPage() {
         )}
       </div>
 
-      {/* Edit/create modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold">{editing ? 'Edit template' : 'New template'}</h2>
-              <button onClick={() => setShowModal(false)} className="btn btn-ghost p-1"><X className="w-4 h-4" /></button>
+              <h2 className="text-base font-semibold">New template</h2>
+              <button onClick={() => setShowModal(false)} className="btn btn-ghost p-1">
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
                 <label className="label">Template name</label>
-                <input className="input" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Newsletter" />
+                <input
+                  className="input"
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Newsletter"
+                />
               </div>
               <div>
                 <label className="label">Default subject</label>
-                <input className="input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} placeholder="Subject line (can include merge tags)" />
+                <input
+                  className="input"
+                  value={form.subject}
+                  onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+                  placeholder="Subject line (can include merge tags)"
+                />
               </div>
               <div>
                 <label className="label">HTML body</label>
-                <textarea className="input font-mono text-xs resize-none" rows={14} value={form.htmlBody}
-                  onChange={e => setForm(f => ({ ...f, htmlBody: e.target.value }))} placeholder="<p>Hi {{first_name}},</p>..." />
+                <textarea
+                  className="input font-mono text-xs resize-none"
+                  rows={14}
+                  value={form.htmlBody}
+                  onChange={(e) => setForm((f) => ({ ...f, htmlBody: e.target.value }))}
+                  placeholder="<p>Hi {{first_name}},</p>..."
+                />
               </div>
               <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary flex-1">
+                  Cancel
+                </button>
                 <button type="submit" disabled={saving} className="btn btn-primary flex-1">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  {editing ? 'Save changes' : 'Create template'}
+                  Create template
                 </button>
               </div>
             </form>
@@ -174,17 +232,20 @@ export default function TemplatesPage() {
         </div>
       )}
 
-      {/* Preview modal */}
       {preview && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="card w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold">{preview.name}</h2>
-              <button onClick={() => setPreview(null)} className="btn btn-ghost p-1"><X className="w-4 h-4" /></button>
+              <button onClick={() => setPreview(null)} className="btn btn-ghost p-1">
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <div className="text-xs text-gray-400 mb-3">Subject: {preview.subject}</div>
-            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white"
-              dangerouslySetInnerHTML={{ __html: preview.htmlBody }} />
+            <div
+              className="border border-gray-200 rounded-lg overflow-hidden bg-white"
+              dangerouslySetInnerHTML={{ __html: preview.htmlBody }}
+            />
           </div>
         </div>
       )}
